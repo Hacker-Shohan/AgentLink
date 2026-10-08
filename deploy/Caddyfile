@@ -1,12 +1,3 @@
-# AI Agent PC Harness — Caddy reverse proxy, self-signed TLS, no domain needed.
-#
-# Assumes nginx (or something else) already owns :80 on this box. Caddy's
-# default behavior tries to bind :80 too, for HTTP->HTTPS redirects and
-# ACME HTTP-01 challenges — disable_redirects stops that so Caddy only
-# touches :443. If nginx is also fronting other sites, add a stream/proxy
-# block there to forward this host's :443 to Caddy, or give Caddy its own
-# dedicated port (e.g. :8443) and adjust the harness enroll URLs to match.
-#
 # Replace YOUR_VPS_IP below with your VPS's actual public IP.
 # Run: sudo caddy run --config Caddyfile
 {
