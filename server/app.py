@@ -21,13 +21,6 @@ app = Flask(
     static_folder=os.path.join(os.path.dirname(__file__), "..", "web", "static"),
 )
 sock = Sock(app)
-
-# Trust exactly one reverse-proxy hop (Caddy) for X-Forwarded-Proto/Host/For.
-# Without this, request.host_url reports Flask's own view (http://127.0.0.1:8787)
-# instead of what the client actually hit (https://<vps-ip>), which broke every
-# generated bootstrap command. If you ever stack a second proxy in front of Caddy,
-# bump x_proto/x_host to 2 — leaving it at 1 with two real hops lets the outer
-# proxy spoof these headers.
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
 init_db()
