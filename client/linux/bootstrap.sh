@@ -17,7 +17,6 @@ fi
 
 python3 -m pip install --quiet --user websocket-client
 
-# Self-signed cert on the VPS (Caddy "tls internal", no domain) -> -k skips verification for this download.
 curl -fsSLk "$HARNESS_SERVER_BASE/client/harness_client.py" -o "$INSTALL_DIR/harness_client.py"
 
 WS_SERVER="${HARNESS_SERVER_BASE/https:/wss:}"
