@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Hub · Device Control</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+<style>
+  :root {
+    --bg: #0b0d12;
+    --bg-2: #0f1218;
+    --surface: #131720;
+    --surface-2: #181d28;
+    --surface-3: #1e2431;
+    --border: #232a38;
+    --border-strong: #2e3748;
+    --text: #e6e9f0;
+    --text-2: #9aa3b5;
+    --text-3: #667085;
+    --accent: #7c8cff;
+    --accent-2: #5b6cf0;
+    --accent-soft: rgba(124,140,255,.12);
+    --green: #34d399;
+    --green-soft: rgba(52,211,153,.12);
+    --red: #f87171;
+    --red-soft: rgba(248,113,113,.12);
+    --amber: #fbbf24;
+    --amber-soft: rgba(251,191,36,.12);
+    --term-bg: #090b10;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+    --radius: 14px;
+    --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+    --sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6fa;
+    --bg-2: #eef1f7;
+    --surface: #ffffff;
+    --surface-2: #f7f8fc;
+    --surface-3: #eef0f6;
+    --border: #e3e7ef;
+    --border-strong: #cfd5e2;
+    --text: #151a28;
+    --text-2: #536077;
+    --text-3: #8791a5;
+    --accent: #4f5ff0;
+    --accent-2: #3d4bd6;
+    --accent-soft: rgba(79,95,240,.1);
+    --green: #0f9f6e;
+    --green-soft: rgba(15,159,110,.1);
+    --red: #dc3b3b;
+    --red-soft: rgba(220,59,59,.1);
+    --amber: #b7791f;
+    --amber-soft: rgba(183,121,31,.12);
+    --term-bg: #0f1320;
+    --shadow: 0 10px 30px rgba(20,30,60,.08);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(900px 400px at 85% -10%, var(--accent-soft), transparent 60%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent-soft); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 28px;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    box-shadow: 0 6px 18px rgba(124,140,255,.35);
+    color: #fff;
+  }
+  .brand h1 { font-size: 15px; font-weight: 650; margin: 0; letter-spacing: -.01em; }
+  .brand p { margin: 0; font-size: 12px; color: var(--text-3); }
+  .top-actions { display: flex; align-items: center; gap: 10px; }
+  .server-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 12px; color: var(--text-2);
+  }
+  .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--green); position: relative; }
+  .pulse::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--green); opacity: 0; animation: ping 2s infinite; }
+  .pulse.down { background: var(--red); }
+  .pulse.down::after { border-color: var(--red); }
+  @keyframes ping { 0% { transform: scale(.6); opacity: .8; } 100% { transform: scale(1.6); opacity: 0; } }
+
+  /* ---------- Buttons / inputs ---------- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    font: inherit; font-size: 13px; font-weight: 550;
+    padding: 8px 14px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2); color: var(--text);
+    transition: background .15s, border-color .15s, transform .05s, box-shadow .15s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--surface-3); }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn:focus-visible, .input:focus-visible, .tab:focus-visible, .chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.primary { background: linear-gradient(180deg, var(--accent), var(--accent-2)); border-color: transparent; color: #fff; box-shadow: 0 6px 16px rgba(91,108,240,.35); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  .btn.danger { color: var(--red); background: var(--red-soft); border-color: transparent; }
+  .btn.danger:hover { background: color-mix(in srgb, var(--red) 22%, transparent); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+  .btn.ghost:hover { background: var(--surface-3); color: var(--text); }
+  .btn.icon { padding: 8px; width: 36px; height: 36px; }
+  .btn.sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
+  .btn svg, .icon-svg { width: 16px; height: 16px; flex: none; }
+
+  .input {
+    width: 100%; font: inherit; font-size: 13px;
+    padding: 9px 12px; border-radius: 10px;
+    background: var(--bg-2); color: var(--text);
+    border: 1px solid var(--border-strong);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .input::placeholder { color: var(--text-3); }
+  .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  /* ---------- Layout ---------- */
+  .container { max-width: 1440px; margin: 0 auto; padding: 24px 28px 48px; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .stat .ico { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; flex: none; }
+  .stat .ico svg { width: 20px; height: 20px; }
+  .stat .label { font-size: 12px; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .stat .value { font-size: 26px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; font-variant-numeric: tabular-nums; }
+  .ico.accent { background: var(--accent-soft); color: var(--accent); }
+  .ico.green { background: var(--green-soft); color: var(--green); }
+  .ico.amber { background: var(--amber-soft); color: var(--amber); }
+  .ico.red { background: var(--red-soft); color: var(--red); }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .card-head h2 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+  .card-head .count { font-size: 11px; font-weight: 600; color: var(--text-2); background: var(--surface-3); border-radius: 999px; padding: 2px 8px; }
+  .card-body { padding: 16px 18px; }
+
+  /* ---------- Devices ---------- */
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+  .search { position: relative; flex: 1; min-width: 160px; }
+  .search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--text-3); pointer-events: none; }
+  .search .input { padding-left: 34px; }
+  .chips { display: flex; gap: 6px; }
+  .chip {
+    font: inherit; font-size: 12px; font-weight: 550; cursor: pointer;
+    padding: 6px 12px; border-radius: 999px;
+    background: transparent; color: var(--text-2); border: 1px solid var(--border-strong);
+  }
+  .chip:hover { color: var(--text); background: var(--surface-3); }
+  .chip.active { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+
+  .device-list { display: flex; flex-direction: column; gap: 8px; }
+  .device {
+    display: flex; align-items: center; gap: 14px;
+    padding: 12px 14px; border-radius: 12px; cursor: pointer;
+    background: var(--surface-2); border: 1px solid var(--border);
+    transition: border-color .15s, background .15s, transform .15s;
+  }
+  .device:hover { border-color: var(--border-strong); transform: translateY(-1px); }
+  .device.selected { border-color: var(--accent); background: var(--accent-soft); }
+  .device.revoked { opacity: .6; }
+  .os-badge {
+    width: 40px; height: 40px; border-radius: 10px; flex: none;
+    display: grid; place-items: center;
+    background: var(--surface-3); color: var(--text-2);
+  }
+  .os-badge svg { width: 20px; height: 20px; }
+  .device-info { flex: 1; min-width: 0; }
+  .device-name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .device-meta { font-size: 12px; color: var(--text-3); display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1px; }
+  .device-meta .mono { font-family: var(--mono); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 650; letter-spacing: .03em;
+    padding: 3px 9px; border-radius: 999px; flex: none;
+  }
+  .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .badge.online { background: var(--green-soft); color: var(--green); }
+  .badge.offline { background: var(--surface-3); color: var(--text-3); }
+  .badge.revoked { background: var(--red-soft); color: var(--red); }
+  .badge.ok { background: var(--green-soft); color: var(--green); }
+  .badge.fail { background: var(--red-soft); color: var(--red); }
+  .badge.warn { background: var(--amber-soft); color: var(--amber); }
+  .badge.pending { background: var(--accent-soft); color: var(--accent); }
+  .badge.plain::before { display: none; }
+
+  .empty { text-align: center; padding: 36px 16px; color: var(--text-3); }
+  .empty svg { width: 38px; height: 38px; margin-bottom: 10px; opacity: .6; }
+  .empty h3 { margin: 0 0 4px; color: var(--text-2); font-size: 14px; font-weight: 600; }
+  .empty p { margin: 0 0 14px; font-size: 13px; }
+
+  /* ---------- Control panel / terminal ---------- */
+  .control-title { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .control-title .name { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .control-actions { display: flex; gap: 8px; }
+  .terminal { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--term-bg); }
+  .term-bar { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border-bottom: 1px solid #1a2030; }
+  .term-bar i { width: 10px; height: 10px; border-radius: 50%; display: block; background: #2b3345; }
+  .term-bar span { margin-left: 8px; font-size: 11px; color: #667085; font-family: var(--mono); }
+  .term-out {
+    margin: 0; padding: 14px; min-height: 180px; max-height: 360px; overflow: auto;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.6; color: #cfd6e4;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .term-out .prompt { color: #7c8cff; }
+  .term-out .dim { color: #667085; }
+  .term-out .err { color: #f87171; }
+  .term-out .ok { color: #34d399; }
+  .term-out .warn { color: #fbbf24; }
+  .term-in { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid #1a2030; background: #0c0f16; }
+  .term-in .caret { color: #7c8cff; font-family: var(--mono); font-weight: 700; }
+  .term-in input {
+    flex: 1; background: transparent; border: 0; outline: 0; color: #e6e9f0;
+    font-family: var(--mono); font-size: 13px; padding: 4px 0;
+  }
+  .term-in input::placeholder { color: #4b5468; }
+  .spinner { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #2b3345; border-top-color: #7c8cff; animation: spin .7s linear infinite; display: none; }
+  .running .spinner { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .quick .lbl { font-size: 12px; color: var(--text-3); margin-right: 2px; }
+
+  /* ---------- Feed & history ---------- */
+  .feed { max-height: 260px; overflow-y: auto; padding: 6px 4px; }
+  .feed-item { display: flex; gap: 12px; padding: 8px 14px; font-size: 13px; align-items: flex-start; }
+  .feed-item .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex: none; background: var(--text-3); }
+  .feed-item .dot.green { background: var(--green); }
+  .feed-item .dot.red { background: var(--red); }
+  .feed-item .dot.accent { background: var(--accent); }
+  .feed-item .dot.amber { background: var(--amber); }
+  .feed-item .t { font-family: var(--mono); font-size: 11px; color: var(--text-3); flex: none; padding-top: 2px; }
+  .feed-item .msg { color: var(--text-2); min-width: 0; word-break: break-word; }
+  .feed-item .msg b { color: var(--text); font-weight: 600; }
+  .feed-item.new { animation: slideIn .35s ease; }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+  .table-wrap { max-height: 340px; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { position: sticky; top: 0; background: var(--surface); text-align: left; font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); padding: 10px 14px; border-bottom: 1px solid var(--border); z-index: 1; }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 12.5px; vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  tbody tr { cursor: pointer; transition: background .12s; }
+  tbody tr:hover { background: var(--surface-2); }
+  td.cmd { font-family: var(--mono); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  td .mono { font-family: var(--mono); color: var(--text-2); }
+  td.time { color: var(--text-3); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+
+  /* ---------- Modal ---------- */
+  .overlay { position: fixed; inset: 0; z-index: 50; background: rgba(5,7,12,.65); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; padding: 20px; }
+  .overlay.show { display: flex; animation: fade .15s ease; }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+  .modal { width: 100%; max-width: 640px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 16px; box-shadow: 0 30px 80px rgba(0,0,0,.5); animation: pop .2s ease; overflow: hidden; }
+  @keyframes pop { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+  .modal-head { padding: 18px 22px 0; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .modal-head h3 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+  .modal-head p { margin: 4px 0 0; color: var(--text-2); font-size: 13px; }
+  .modal-body { padding: 16px 22px; }
+  .modal-foot { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: var(--bg-2); }
+  .tabs { display: inline-flex; padding: 4px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; }
+  .tab { font: inherit; font-size: 13px; font-weight: 550; padding: 6px 14px; border-radius: 7px; border: 0; background: transparent; color: var(--text-2); cursor: pointer; }
+  .tab.active { background: var(--surface-3); color: var(--text); }
+  .codebox { position: relative; background: var(--term-bg); border: 1px solid #1a2030; border-radius: 12px; }
+  .codebox pre { margin: 0; padding: 14px 96px 14px 14px; max-height: 150px; overflow: auto; font-family: var(--mono); font-size: 12px; color: #34d399; white-space: pre-wrap; word-break: break-all; user-select: all; }
+  .codebox .copy { position: absolute; top: 8px; right: 8px; }
+  .meta-row { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); margin-bottom: 14px; }
+  .meta-row b { color: var(--text); font-family: var(--mono); font-weight: 600; }
+  .note { display: flex; gap: 10px; padding: 10px 12px; margin-top: 12px; border-radius: 10px; background: var(--amber-soft); color: var(--amber); font-size: 12.5px; }
+  .note svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+
+  /* ---------- Toasts ---------- */
+  .toasts { position: fixed; right: 20px; bottom: 20px; z-index: 80; display: flex; flex-direction: column; gap: 10px; }
+  .toast { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--surface-3); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: var(--shadow); font-size: 13px; animation: slideIn .25s ease; max-width: 340px; }
+  .toast.ok svg { color: var(--green); } .toast.err svg { color: var(--red); } .toast svg { width: 16px; height: 16px; flex: none; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } .stats { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) {
+    .container { padding: 16px 14px 40px; } .topbar { padding: 12px 14px; }
+    .stats { grid-template-columns: 1fr 1fr; gap: 10px; } .stat { padding: 12px; } .stat .value { font-size: 22px; }
+    .server-pill span.txt, .brand p { display: none; }
+    .control-actions .btn span { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- Inline SVG icon sprite -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-satellite" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M4.9 19.1a10 10 0 0 1 0-14.2"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 17 6-6-6-6M12 19h8"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-ban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M16 7l3 3"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3zM12 10v4M12 17.5v.01"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11M22 2l-7 20-4-9-9-4z"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5 10.5 4.5v7H3zM11.5 4.4 21 3v8.5h-9.5zM3 12.5h7.5v7L3 18.5zM11.5 12.5H21V21l-9.5-1.4z"/></symbol>
+    <symbol id="i-linux" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2.5 0-3.5 2-3.5 4.5 0 1.6-.5 2.4-1.5 4C5.8 13.4 5 15.2 5 17c0 2.2 1.6 4 4 4h6c2.4 0 4-1.8 4-4 0-1.8-.8-3.6-2-5.5-1-1.6-1.5-2.4-1.5-4C15.5 5 14.5 3 12 3z"/><circle cx="10.2" cy="8" r=".6" fill="currentColor"/><circle cx="13.8" cy="8" r=".6" fill="currentColor"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.600-2.800-1.800-3.400-1.800-1.400-.1-2.800.8-3.500.8s-1.800-.8-3-.8c-1.500 0-3 .9-3.800 2.300-1.600 2.800-.4 7 1.200 9.300.8 1.100 1.700 2.400 2.900 2.300 1.200 0 1.600-.7 3-.7s1.800.7 3 .7 2-1.100 2.800-2.200c.9-1.300 1.200-2.500 1.300-2.600-.1 0-2.500-1-2.500-3.800zM14.100 5.700c.6-.8 1.100-1.900.9-3-1 0-2.100.6-2.800 1.400-.6.700-1.100 1.800-1 2.900 1.100.1 2.200-.5 2.900-1.300z"/></symbol>
+  </defs>
+</svg>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo"><svg class="icon-svg" style="width:20px;height:20px"><use href="#i-satellite"/></svg></div>
+    <div>
+      <h1>Agent Hub</h1>
+      <p>Remote device control &amp; command console</p>
+    </div>
+  </div>
+  <div class="top-actions">
+    <div class="server-pill" title="Dashboard ↔ server connection"><span class="pulse" id="serverPulse"></span><span class="txt" id="serverText">Server online</span></div>
+    <button class="btn icon ghost" id="themeBtn" title="Toggle theme" aria-label="Toggle theme"><svg id="themeIcon"><use href="#i-sun"/></svg></button>
+    <button class="btn primary" id="connectBtn"><svg><use href="#i-plus"/></svg>Connect new PC</button>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="stats">
+    <div class="stat"><div class="ico accent"><svg><use href="#i-monitor"/></svg></div><div><div class="label">Devices</div><div class="value" id="statTotal">0</div></div></div>
+    <div class="stat"><div class="ico green"><svg><use href="#i-bolt"/></svg></div><div><div class="label">Online now</div><div class="value" id="statActive">0</div></div></div>
+    <div class="stat"><div class="ico amber"><svg><use href="#i-terminal"/></svg></div><div><div class="label">Commands today</div><div class="value" id="statCommands">0</div></div></div>
+    <div class="stat"><div class="ico red"><svg><use href="#i-ban"/></svg></div><div><div class="label">Failed / timed out</div><div class="value" id="statFailed">0</div></div></div>
+  </section>
+
+  <div class="grid">
+    <!-- LEFT -->
+    <div class="col">
+      <section class="card">
+        <div class="card-head">
+          <h2>Devices <span class="count" id="deviceCount">0</span></h2>
+        </div>
+        <div class="card-body">
+          <div class="toolbar">
+            <div class="search"><svg><use href="#i-search"/></svg><input class="input" id="searchInput" placeholder="Search by name, ID or OS…" autocomplete="off"></div>
+            <div class="chips" id="filterChips">
+              <button class="chip active" data-f="all">All</button>
+              <button class="chip" data-f="online">Online</button>
+              <button class="chip" data-f="offline">Offline</button>
+            </div>
+          </div>
+          <div class="device-list" id="deviceList"></div>
+        </div>
+      </section>
+
+      <section class="card" id="controlPanel" style="display:none">
+        <div class="card-head">
+          <div class="control-title">
+            <svg class="icon-svg"><use href="#i-terminal"/></svg>
+            <span class="name" id="controlName">Device</span>
+            <span id="controlBadge"></span>
+          </div>
+          <div class="control-actions">
+            <button class="btn sm" id="reissueBtn" title="Issue a fresh enrollment token"><svg><use href="#i-key"/></svg><span>Regen token</span></button>
+            <button class="btn sm danger" id="revokeBtn"><svg><use href="#i-ban"/></svg><span>Revoke</span></button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="terminal" id="terminal">
+            <div class="term-bar"><i></i><i></i><i></i><span id="termTitle">console</span></div>
+            <pre class="term-out" id="output"><span class="dim">Ready. Type a command below and press Enter.</span></pre>
+            <div class="term-in">
+              <span class="caret">›</span>
+              <input id="cmdInput" placeholder="Run a command…  (↑ ↓ for history)" autocomplete="off" spellcheck="false">
+              <div class="spinner"></div>
+              <button class="btn sm primary" id="execBtn"><svg><use href="#i-send"/></svg>Run</button>
+            </div>
+          </div>
+          <div class="quick" id="quickCmds"></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col">
+      <section class="card">
+        <div class="card-head"><h2>Live activity</h2><button class="btn sm ghost" id="clearFeed">Clear</button></div>
+        <div class="feed" id="feed"></div>
+      </section>
+
+      <section class="card">
+        <div class="card-head"><h2>Command history <span class="count" id="histCount">0</span></h2></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Device</th><th>Command</th><th>Status</th></tr></thead>
+            <tbody id="history"></tbody>
+          </table>
+          <div class="empty" id="histEmpty" style="display:none"><p style="margin:0">No commands yet.</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<!-- Enroll modal -->
+<div class="overlay" id="enrollOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="enrollTitle">
+    <div class="modal-head">
+      <div><h3 id="enrollTitle">Connect a new PC</h3><p id="enrollSub">Run one command on the target machine.</p></div>
+      <button class="btn icon ghost" data-close aria-label="Close"><svg><use href="#i-x"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <div class="meta-row"><span>Device ID <b id="enrollDevId">—</b></span><span>Expires in <b id="enrollExpiry">—</b></span></div>
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-os="windows" role="tab">Windows</button>
+        <button class="tab" data-os="linux" role="tab">Linux</button>
+      </div>
+      <div class="codebox">
+        <pre id="enrollCode"></pre>
+        <button class="btn sm copy" id="copyEnroll"><svg><use href="#i-copy"/></svg>Copy</button>
+      </div>
+      <div class="note"><svg><use href="#i-alert"/></svg><div>Single-use token. Treat this command like a password — anyone who runs it before it expires can enroll a device.</div></div>
+    </div>
+    <div class="modal-foot"><button class="btn" data-close>Done</button></div>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div class="overlay" id="confirmOverlay">
+  <div class="modal" style="max-width:440px" role="alertdialog" aria-modal="true">
+    <div class="modal-head"><div><h3 id="confirmTitle">Are you sure?</h3><p id="confirmText"></p></div></div>
+    <div class="modal-body"></div>
+    <div class="modal-foot"><button class="btn" id="confirmNo">Cancel</button><button class="btn danger" id="confirmYes">Confirm</button></div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+/* ============ helpers ============ */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// Server timestamps are naive UTC ISO strings — append Z so the browser parses them as UTC.
+function parseUTC(s) { if (!s) return null; const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : s + 'Z'); return isNaN(d) ? null : d; }
+function timeAgo(s) {
+  const d = parseUTC(s); if (!d) return 'never';
+  const sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (sec < 10) return 'just now';
+  if (sec < 60) return sec + 's ago';
+  if (sec < 3600) return Math.floor(sec / 60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
+  return Math.floor(sec / 86400) + 'd ago';
+}
+function clock(s) { const d = parseUTC(s); return d ? d.toLocaleTimeString('en-GB') : '—'; }
+function icon(name) { return `<svg><use href="#i-${name}"/></svg>`; }
+
+function toast(msg, kind = 'ok') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.innerHTML = icon(kind === 'ok' ? 'check' : 'alert') + `<span>${esc(msg)}</span>`;
+  $('toasts').appendChild(el);
+  setTimeout(() => { el.style.opacity = 0; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 2800);
+}
+
+async function api(url, opts = {}) {
+  const res = await fetch(url, opts);
+  if (res.status === 401) { location.reload(); throw new Error('unauthorized'); }
+  return res.json();
+}
+
+/* ============ state ============ */
+let devices = [];
+let selectedDevice = null;
+let filter = 'all';
+let knownStatus = {};
+let cmdHistory = JSON.parse(sessionStorage.getItem('cmdHistory') || '[]');
+let histIdx = -1;
+let enrollData = null;
+let enrollOS = 'windows';
+let firstLoad = true;
+
+/* ============ theme ============ */
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $('themeIcon').innerHTML = `<use href="#i-${t === 'dark' ? 'sun' : 'moon'}"/>`;
+}
+applyTheme(localStorage.getItem('theme') || 'dark');
+$('themeBtn').onclick = () => {
+  const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  localStorage.setItem('theme', t); applyTheme(t);
+};
+
+/* ============ activity feed ============ */
+function feed(html, color = 'accent') {
+  const el = $('feed');
+  const row = document.createElement('div');
+  row.className = 'feed-item new';
+  row.innerHTML = `<span class="dot ${color}"></span><span class="t">${new Date().toLocaleTimeString('en-GB')}</span><span class="msg">${html}</span>`;
+  el.prepend(row);
+  while (el.children.length > 80) el.lastChild.remove();
+}
+$('clearFeed').onclick = () => { $('feed').innerHTML = ''; };
+feed('Dashboard session started', 'accent');
+
+/* ============ devices ============ */
+function osIcon(os) {
+  const o = (os || '').toLowerCase();
+  if (o.includes('darwin') || o.includes('mac')) return 'apple';   // check first: "darwin" contains "win"
+  if (o.includes('win')) return 'windows';
+  if (o.includes('linux')) return 'linux';
+  return 'monitor';
+}
+function deviceState(d) { return d.revoked ? 'revoked' : (d.connected ? 'online' : 'offline'); }
+
+function renderDevices() {
+  const q = $('searchInput').value.trim().toLowerCase();
+  const list = devices.filter(d => {
+    const st = deviceState(d);
+    if (filter === 'online' && st !== 'online') return false;
+    if (filter === 'offline' && st === 'online') return false;
+    if (!q) return true;
+    return [d.name, d.device_id, d.os].some(v => (v || '').toLowerCase().includes(q));
+  });
+  $('deviceCount').textContent = devices.length;
+  const wrap = $('deviceList');
+
+  if (!list.length) {
+    wrap.innerHTML = devices.length
+      ? `<div class="empty">${icon('search')}<h3>No matching devices</h3><p>Try a different search or filter.</p></div>`
+      : `<div class="empty">${icon('monitor')}<h3>No devices yet</h3><p>Connect your first PC to start sending commands.</p><button class="btn primary" onclick="openEnroll()">${icon('plus')}Connect new PC</button></div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(d => {
+    const st = deviceState(d);
+    const label = st === 'online' ? 'Online' : st === 'revoked' ? 'Revoked' : 'Offline';
+    return `
+    <div class="device ${d.device_id === selectedDevice ? 'selected' : ''} ${st === 'revoked' ? 'revoked' : ''}" data-id="${esc(d.device_id)}" tabindex="0">
+      <div class="os-badge"><svg><use href="#i-${osIcon(d.os)}"/></svg></div>
+      <div class="device-info">
+        <div class="device-name">${esc(d.name || d.device_id)}</div>
+        <div class="device-meta"><span class="mono">${esc(d.device_id)}</span><span>·</span><span>${esc(d.os || 'unknown OS')}</span><span>·</span><span>${st === 'online' ? 'connected' : 'seen ' + timeAgo(d.last_seen)}</span></div>
+      </div>
+      <span class="badge ${st}">${label}</span>
+    </div>`;
+  }).join('');
+}
+
+$('deviceList').addEventListener('click', (e) => {
+  const row = e.target.closest('.device'); if (row) selectDevice(row.dataset.id);
+});
+$('deviceList').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { const row = e.target.closest('.device'); if (row) { e.preventDefault(); selectDevice(row.dataset.id); } }
+});
+$('searchInput').addEventListener('input', renderDevices);
+$('filterChips').addEventListener('click', (e) => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  filter = c.dataset.f;
+  document.querySelectorAll('#filterChips .chip').forEach(x => x.classList.toggle('active', x === c));
+  renderDevices();
+});
+
+async function refreshDevices() {
+  try {
+    devices = await api('/api/devices');
+    setServerStatus(true);
+  } catch (e) { setServerStatus(false); return; }
+
+  let active = 0;
+  devices.forEach(d => {
+    if (d.connected) active++;
+    const label = d.name || d.device_id;
+    const prev = knownStatus[d.device_id];
+    if (!firstLoad && prev !== undefined && prev !== d.connected) {
+      feed(`<b>${esc(label)}</b> ${d.connected ? 'came online' : 'went offline'}`, d.connected ? 'green' : 'red');
+    }
+    if (!firstLoad && prev === undefined) feed(`New device <b>${esc(label)}</b> enrolled`, 'green');
+    knownStatus[d.device_id] = d.connected;
+  });
+  firstLoad = false;
+
+  $('statTotal').textContent = devices.length;
+  $('statActive').textContent = active;
+  renderDevices();
+  if (selectedDevice) updateControlHeader();
+}
+
+function setServerStatus(ok) {
+  $('serverPulse').classList.toggle('down', !ok);
+  $('serverText').textContent = ok ? 'Server online' : 'Server unreachable';
+}
+
+/* ============ control panel ============ */
+const QUICK = {
+  windows: [['System info', 'systeminfo | findstr /B /C:"OS" /C:"System Type"'], ['Who am I', 'whoami'], ['Processes', 'tasklist | more'], ['IP config', 'ipconfig']],
+  linux:   [['System info', 'uname -a'], ['Who am I', 'whoami'], ['Disk usage', 'df -h'], ['Memory', 'free -h'], ['Uptime', 'uptime']],
+  darwin:  [['System info', 'uname -a'], ['Who am I', 'whoami'], ['Disk usage', 'df -h'], ['Uptime', 'uptime']],
+};
+function quickFor(os) { const o = (os || '').toLowerCase(); return (o.includes('darwin') || o.includes('mac')) ? QUICK.darwin : o.includes('win') ? QUICK.windows : QUICK.linux; }
+
+function currentDevice() { return devices.find(d => d.device_id === selectedDevice); }
+
+function updateControlHeader() {
+  const d = currentDevice(); if (!d) return;
+  const st = deviceState(d);
+  $('controlName').textContent = (d.name || d.device_id);
+  $('controlBadge').innerHTML = `<span class="badge ${st}">${st[0].toUpperCase() + st.slice(1)}</span>`;
+  $('termTitle').textContent = `${d.device_id} · ${d.os || 'unknown'}`;
+  $('execBtn').disabled = st !== 'online';
+  $('cmdInput').disabled = st !== 'online';
+  $('cmdInput').placeholder = st === 'online' ? 'Run a command…  (↑ ↓ for history)' : 'Device is not connected';
+  $('revokeBtn').disabled = d.revoked;
+}
+
+function selectDevice(id) {
+  selectedDevice = id;
+  $('controlPanel').style.display = 'block';
+  $('output').innerHTML = '<span class="dim">Ready. Type a command below and press Enter.</span>';
+  const d = currentDevice();
+  $('quickCmds').innerHTML = '<span class="lbl">Quick:</span>' + quickFor(d && d.os).map(([n, c]) =>
+    `<button class="chip" data-cmd="${esc(c)}">${esc(n)}</button>`).join('');
+  updateControlHeader(); renderDevices();
+  $('controlPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  if (!$('cmdInput').disabled) $('cmdInput').focus();
+}
+
+$('quickCmds').addEventListener('click', (e) => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  $('cmdInput').value = c.dataset.cmd; runCommand();
+});
+
+async function runCommand() {
+  if (!selectedDevice) return;
+  const input = $('cmdInput');
+  const cmd = input.value.trim(); if (!cmd) return;
+  const out = $('output');
+  const term = $('terminal');
+  if (term.classList.contains('running')) return;
+
+  cmdHistory = [cmd, ...cmdHistory.filter(c => c !== cmd)].slice(0, 50);
+  sessionStorage.setItem('cmdHistory', JSON.stringify(cmdHistory)); histIdx = -1;
+
+  term.classList.add('running'); $('execBtn').disabled = true;
+  out.innerHTML = `<span class="prompt">›</span> ${esc(cmd)}\n<span class="dim">running…</span>`;
+  const label = (currentDevice() || {}).name || selectedDevice;
+  feed(`Command sent to <b>${esc(label)}</b>: <code>${esc(cmd.length > 40 ? cmd.slice(0, 40) + '…' : cmd)}</code>`, 'accent');
+
+  try {
+    const r = await api(`/api/devices/${encodeURIComponent(selectedDevice)}/command`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: cmd }),
+    });
+    if (r.error) {
+      out.innerHTML = `<span class="prompt">›</span> ${esc(cmd)}\n<span class="err">Error: ${esc(r.error)}</span>`;
+      feed(`<b>${esc(label)}</b> command failed: ${esc(r.error)}`, 'red');
+    } else {
+      const okExit = r.exit_code === 0;
+      let html = `<span class="prompt">›</span> ${esc(cmd)}\n`;
+      if (r.stdout) html += esc(r.stdout);
+      if (r.stderr) html += `\n<span class="err">${esc(r.stderr)}</span>`;
+      if (!r.stdout && !r.stderr) html += '<span class="dim">(no output)</span>';
+      html += `\n\n<span class="${okExit ? 'ok' : 'warn'}">exit ${r.exit_code ?? '—'}</span> <span class="dim">· ${esc(r.status || 'completed')}</span>`;
+      out.innerHTML = html; out.scrollTop = 0;
+      feed(`<b>${esc(label)}</b> command ${esc(r.status || 'completed')}`, okExit ? 'green' : 'amber');
+    }
+  } catch (e) {
+    out.innerHTML = `<span class="err">Request failed: ${esc(e.message)}</span>`;
+  } finally {
+    term.classList.remove('running'); input.value = '';
+    updateControlHeader(); refreshHistory(); input.focus();
+  }
+}
+
+$('execBtn').onclick = runCommand;
+$('cmdInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') runCommand();
+  else if (e.key === 'ArrowUp') { if (histIdx < cmdHistory.length - 1) { histIdx++; $('cmdInput').value = cmdHistory[histIdx]; } e.preventDefault(); }
+  else if (e.key === 'ArrowDown') { histIdx = Math.max(-1, histIdx - 1); $('cmdInput').value = histIdx === -1 ? '' : cmdHistory[histIdx]; e.preventDefault(); }
+});
+
+/* ============ history ============ */
+function statusBadge(r) {
+  const s = r.status;
+  if (s === 'completed') return r.exit_code === 0 ? '<span class="badge ok">OK</span>' : `<span class="badge warn">exit ${esc(r.exit_code)}</span>`;
+  if (s === 'pending') return '<span class="badge pending">Pending</span>';
+  if (s === 'timeout') return '<span class="badge warn">Timeout</span>';
+  return `<span class="badge fail">${esc(s || 'error')}</span>`;
+}
+
+async function refreshHistory() {
+  let rows; try { rows = await api('/api/history'); } catch (e) { return; }
+  const body = $('history');
+  $('histEmpty').style.display = rows.length ? 'none' : 'block';
+  $('histCount').textContent = rows.length;
+  body.innerHTML = rows.map(r => `
+    <tr data-cmd="${esc(r.command)}" data-dev="${esc(r.device_id)}" title="Click to re-use this command">
+      <td class="time">${esc(clock(r.created_at))}</td>
+      <td><span class="mono">${esc(r.device_id)}</span></td>
+      <td class="cmd">${esc(r.command)}</td>
+      <td>${statusBadge(r)}</td>
+    </tr>`).join('');
+
+  const today = new Date().toDateString();
+  const todays = rows.filter(r => { const d = parseUTC(r.created_at); return d && d.toDateString() === today; });
+  $('statCommands').textContent = todays.length;
+  $('statFailed').textContent = todays.filter(r => r.status === 'timeout' || r.status === 'error' || (r.status === 'completed' && r.exit_code !== 0)).length;
+}
+$('history').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr'); if (!tr) return;
+  if (tr.dataset.dev !== selectedDevice) selectDevice(tr.dataset.dev);
+  $('cmdInput').value = tr.dataset.cmd; $('cmdInput').focus();
+});
+
+/* ============ enrollment modal ============ */
+function openOverlay(id) { $(id).classList.add('show'); }
+function closeOverlays() { document.querySelectorAll('.overlay').forEach(o => o.classList.remove('show')); }
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeOverlays));
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('mousedown', (e) => { if (e.target === o) closeOverlays(); }));
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeOverlays(); });
+
+function showEnroll(data, title, sub) {
+  enrollData = data;
+  $('enrollTitle').textContent = title; $('enrollSub').textContent = sub;
+  $('enrollDevId').textContent = data.device_id;
+  $('enrollExpiry').textContent = data.expires_in_minutes + ' min';
+  setEnrollOS(/win/i.test(navigator.platform || navigator.userAgent) ? 'windows' : 'linux');
+  openOverlay('enrollOverlay');
+}
+function setEnrollOS(os) {
+  enrollOS = os;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.os === os));
+  $('enrollCode').textContent = os === 'windows' ? enrollData.windows_command : enrollData.linux_command;
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => setEnrollOS(t.dataset.os)));
+
+$('copyEnroll').onclick = async () => {
+  try { await navigator.clipboard.writeText($('enrollCode').textContent); toast('Command copied to clipboard'); }
+  catch (e) {
+    const r = document.createRange(); r.selectNodeContents($('enrollCode'));
+    const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Press Ctrl/⌘+C to copy', 'err');
+  }
+};
+
+async function openEnroll() {
+  try {
+    const data = await api('/api/enroll', { method: 'POST' });
+    showEnroll(data, 'Connect a new PC', 'Run one command on the target machine — it will appear here automatically.');
+    feed(`Enrollment token issued for <b>${esc(data.device_id)}</b>`, 'accent');
+  } catch (e) { toast('Could not create enrollment token', 'err'); }
+}
+$('connectBtn').onclick = openEnroll;
+
+$('reissueBtn').onclick = async () => {
+  if (!selectedDevice) return;
+  try {
+    const data = await api(`/api/devices/${encodeURIComponent(selectedDevice)}/reissue-token`, { method: 'POST' });
+    showEnroll(data, 'New enrollment token', 'Re-enrolls this existing device without creating a duplicate entry.');
+    feed(`New enrollment token issued for <b>${esc(selectedDevice)}</b>`, 'accent');
+  } catch (e) { toast('Could not reissue token', 'err'); }
+};
+
+/* ============ confirm / revoke ============ */
+function confirmDialog(title, text, yesLabel) {
+  return new Promise(resolve => {
+    $('confirmTitle').textContent = title; $('confirmText').textContent = text; $('confirmYes').textContent = yesLabel;
+    openOverlay('confirmOverlay');
+    const done = (v) => { $('confirmYes').onclick = $('confirmNo').onclick = null; closeOverlays(); resolve(v); };
+    $('confirmYes').onclick = () => done(true); $('confirmNo').onclick = () => done(false);
+  });
+}
+$('revokeBtn').onclick = async () => {
+  if (!selectedDevice) return;
+  const id = selectedDevice;
+  if (!(await confirmDialog(`Revoke ${id}?`, 'This disconnects the device and permanently invalidates its credential. It will need a new enrollment token to come back.', 'Revoke device'))) return;
+  await api(`/api/devices/${encodeURIComponent(id)}/revoke`, { method: 'POST' });
+  feed(`<b>${esc(id)}</b> revoked`, 'red'); toast(`${id} revoked`);
+  $('controlPanel').style.display = 'none'; selectedDevice = null;
+  refreshDevices();
+};
+
+/* ============ boot ============ */
+refreshDevices();
+refreshHistory();
+setInterval(refreshDevices, 3000);
+setInterval(refreshHistory, 5000);
+</script>
+</body>
+</html>
