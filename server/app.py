@@ -92,8 +92,13 @@ def api_history():
 @app.route("/api/enroll", methods=["POST"])
 @require_dashboard_auth
 def api_enroll():
-    name = (request.json or {}).get("name", "") if request.is_json else ""
-    device_id, token = auth.create_enrollment_token(name)
+    data = request.json or {} if request.is_json else {}
+    name = data.get("name", "")
+    try:
+        ttl = auth.resolve_ttl_minutes(data.get("ttl_minutes"))
+    except ValueError as e:
+        return jsonify({"error": "invalid_ttl", "message": str(e)}), 400
+    device_id, token = auth.create_enrollment_token(name, ttl_minutes=ttl)
     base_url = request.host_url.rstrip("/")
 
     ps_command = auth.build_windows_bootstrap_command(base_url, token, device_id)
@@ -104,7 +109,10 @@ def api_enroll():
         {
             "device_id": device_id,
             "token": token,
-            "expires_in_minutes": auth.ENROLLMENT_TTL_MINUTES,
+            "expires_in_minutes": ttl,
+            "ttl_min_minutes": auth.ENROLLMENT_TTL_MIN_MINUTES,
+            "ttl_max_minutes": auth.ENROLLMENT_TTL_MAX_MINUTES,
+            "ttl_default_minutes": auth.ENROLLMENT_TTL_MINUTES,
             "windows_command": ps_command,
             "linux_command": sh_command,
         }
@@ -133,13 +141,21 @@ def api_register():
 def api_reissue_token(device_id):
     """A fresh enrollment token for a device_id that already exists — for re-running
     setup (stale/expired/already-used token) without creating a duplicate device row."""
-    token = auth.reissue_enrollment_token(device_id)
+    data = request.json or {} if request.is_json else {}
+    try:
+        ttl = auth.resolve_ttl_minutes(data.get("ttl_minutes"))
+    except ValueError as e:
+        return jsonify({"error": "invalid_ttl", "message": str(e)}), 400
+    token = auth.reissue_enrollment_token(device_id, ttl_minutes=ttl)
     base_url = request.host_url.rstrip("/")
     return jsonify(
         {
             "device_id": device_id,
             "token": token,
-            "expires_in_minutes": auth.ENROLLMENT_TTL_MINUTES,
+            "expires_in_minutes": ttl,
+            "ttl_min_minutes": auth.ENROLLMENT_TTL_MIN_MINUTES,
+            "ttl_max_minutes": auth.ENROLLMENT_TTL_MAX_MINUTES,
+            "ttl_default_minutes": auth.ENROLLMENT_TTL_MINUTES,
             "windows_command": auth.build_windows_bootstrap_command(base_url, token, device_id),
             "linux_command": f'curl -fsSLk "{base_url}/bootstrap.sh?token={token}&device_id={device_id}" | bash',
         }
@@ -157,6 +173,21 @@ def api_revoke(device_id):
         except Exception:
             pass
     return jsonify({"ok": True})
+
+
+@app.route("/api/devices/<device_id>", methods=["DELETE"])
+@require_dashboard_auth
+def api_delete_device(device_id):
+    """Permanently remove an offline device (its row + enrollment tokens).
+    Refuses while the device is currently connected — revoke/disconnect first.
+    Command history is kept."""
+    if devices.get_connection(device_id):
+        return jsonify(
+            {"error": "device_online", "message": "Device is online — revoke it first."}
+        ), 409
+    if not auth.delete_device(device_id):
+        return jsonify({"error": "not_found"}), 404
+    return jsonify({"ok": True, "deleted": device_id})
 
 
 # ---------- Commands ----------

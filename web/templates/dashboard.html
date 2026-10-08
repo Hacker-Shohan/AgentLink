@@ -396,6 +396,7 @@
           <div class="control-actions">
             <button class="btn sm" id="reissueBtn" title="Issue a fresh enrollment token"><svg><use href="#i-key"/></svg><span>Regen token</span></button>
             <button class="btn sm danger" id="revokeBtn"><svg><use href="#i-ban"/></svg><span>Revoke</span></button>
+            <button class="btn sm danger" id="deleteBtn" title="Delete this offline device permanently"><svg><use href="#i-x"/></svg><span>Delete</span></button>
           </div>
         </div>
         <div class="card-body">
@@ -444,6 +445,13 @@
     </div>
     <div class="modal-body">
       <div class="meta-row"><span>Device ID <b id="enrollDevId">—</b></span><span>Expires in <b id="enrollExpiry">—</b></span></div>
+      <div class="ttl-row" style="display:flex;align-items:center;gap:.5rem;margin:.25rem 0 .75rem;font-size:.9em;flex-wrap:wrap">
+        <label for="enrollTtl" style="opacity:.8">Token lifetime (minutes):</label>
+        <input id="enrollTtl" type="number" min="1" max="1440" step="1" value="30"
+               style="width:5.5rem;padding:.3rem .5rem;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.18);border-radius:.4rem;color:inherit" />
+        <button class="btn sm" id="enrollRebuild" type="button"><svg><use href="#i-key"/></svg>Apply</button>
+        <span id="enrollTtlHint" style="opacity:.55">1–1440 min</span>
+      </div>
       <div class="tabs" role="tablist">
         <button class="tab active" data-os="windows" role="tab">Windows</button>
         <button class="tab" data-os="linux" role="tab">Linux</button>
@@ -511,6 +519,7 @@ let cmdHistory = JSON.parse(sessionStorage.getItem('cmdHistory') || '[]');
 let histIdx = -1;
 let enrollData = null;
 let enrollOS = 'windows';
+let enrollMode = { type: 'new', id: null };
 let firstLoad = true;
 
 /* ============ theme ============ */
@@ -643,6 +652,10 @@ function updateControlHeader() {
   $('cmdInput').disabled = st !== 'online';
   $('cmdInput').placeholder = st === 'online' ? 'Run a command…  (↑ ↓ for history)' : 'Device is not connected';
   $('revokeBtn').disabled = d.revoked;
+  $('deleteBtn').disabled = st === 'online';
+  $('deleteBtn').title = st === 'online'
+    ? 'Device is online — revoke/disconnect it first'
+    : 'Delete this offline device permanently';
 }
 
 function selectDevice(id) {
@@ -750,11 +763,19 @@ document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click
 document.querySelectorAll('.overlay').forEach(o => o.addEventListener('mousedown', (e) => { if (e.target === o) closeOverlays(); }));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeOverlays(); });
 
-function showEnroll(data, title, sub) {
+function showEnroll(data, title, sub, mode) {
   enrollData = data;
+  enrollMode = mode || { type: 'new', id: null };
   $('enrollTitle').textContent = title; $('enrollSub').textContent = sub;
   $('enrollDevId').textContent = data.device_id;
   $('enrollExpiry').textContent = data.expires_in_minutes + ' min';
+  const ttl = $('enrollTtl');
+  if (ttl) {
+    ttl.value = data.expires_in_minutes;
+    if (data.ttl_max_minutes) ttl.max = data.ttl_max_minutes;
+    if (data.ttl_min_minutes != null) ttl.min = data.ttl_min_minutes;
+    if (data.ttl_max_minutes) $('enrollTtlHint').textContent = (data.ttl_min_minutes || 1) + '–' + data.ttl_max_minutes + ' min';
+  }
   setEnrollOS(/win/i.test(navigator.platform || navigator.userAgent) ? 'windows' : 'linux');
   openOverlay('enrollOverlay');
 }
@@ -776,17 +797,35 @@ $('copyEnroll').onclick = async () => {
 async function openEnroll() {
   try {
     const data = await api('/api/enroll', { method: 'POST' });
-    showEnroll(data, 'Connect a new PC', 'Run one command on the target machine — it will appear here automatically.');
+    showEnroll(data, 'Connect a new PC', 'Run one command on the target machine — it will appear here automatically.', { type: 'new', id: null });
     feed(`Enrollment token issued for <b>${esc(data.device_id)}</b>`, 'accent');
   } catch (e) { toast('Could not create enrollment token', 'err'); }
 }
 $('connectBtn').onclick = openEnroll;
 
+// Rebuild the current token with the manually entered lifetime.
+$('enrollRebuild').onclick = async () => {
+  const ttl = parseInt($('enrollTtl').value, 10);
+  if (!Number.isFinite(ttl) || ttl < 1) { toast('Enter a valid lifetime in minutes', 'err'); return; }
+  const opts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ttl_minutes: ttl }) };
+  try {
+    let data;
+    if (enrollMode.type === 'reissue') {
+      data = await api(`/api/devices/${encodeURIComponent(enrollMode.id)}/reissue-token`, opts);
+      showEnroll(data, 'New enrollment token', 'Re-enrolls this existing device without creating a duplicate entry.', enrollMode);
+    } else {
+      data = await api('/api/enroll', opts);
+      showEnroll(data, 'Connect a new PC', 'Run one command on the target machine — it will appear here automatically.', enrollMode);
+    }
+    toast(`Token issued — lifetime ${data.expires_in_minutes} min`);
+  } catch (e) { toast('Could not rebuild token (check the value)', 'err'); }
+};
+
 $('reissueBtn').onclick = async () => {
   if (!selectedDevice) return;
   try {
     const data = await api(`/api/devices/${encodeURIComponent(selectedDevice)}/reissue-token`, { method: 'POST' });
-    showEnroll(data, 'New enrollment token', 'Re-enrolls this existing device without creating a duplicate entry.');
+    showEnroll(data, 'New enrollment token', 'Re-enrolls this existing device without creating a duplicate entry.', { type: 'reissue', id: selectedDevice });
     feed(`New enrollment token issued for <b>${esc(selectedDevice)}</b>`, 'accent');
   } catch (e) { toast('Could not reissue token', 'err'); }
 };
@@ -808,6 +847,21 @@ $('revokeBtn').onclick = async () => {
   feed(`<b>${esc(id)}</b> revoked`, 'red'); toast(`${id} revoked`);
   $('controlPanel').style.display = 'none'; selectedDevice = null;
   refreshDevices();
+};
+
+/* delete an offline device (row + its enrollment tokens). Row only shows for offline/revoked. */
+$('deleteBtn').onclick = async () => {
+  if (!selectedDevice) return;
+  const id = selectedDevice;
+  const d = currentDevice();
+  if (deviceState(d) === 'online') { toast('Device is online — revoke it first', 'err'); return; }
+  if (!(await confirmDialog(`Delete ${id}?`, 'Permanently removes this offline device and its enrollment tokens from the hub. Command history is kept. This cannot be undone.', 'Delete device'))) return;
+  try {
+    await api(`/api/devices/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    feed(`<b>${esc(id)}</b> deleted`, 'red'); toast(`${id} deleted`);
+    $('controlPanel').style.display = 'none'; selectedDevice = null;
+    refreshDevices();
+  } catch (e) { toast('Could not delete device', 'err'); }
 };
 
 /* ============ boot ============ */

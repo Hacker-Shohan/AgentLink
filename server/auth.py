@@ -1,3 +1,4 @@
+import os
 import base64
 import secrets
 import hashlib
@@ -5,7 +6,35 @@ import datetime as dt
 
 from database import get_conn
 
-ENROLLMENT_TTL_MINUTES = 30
+
+def _env_int(name: str, default: int) -> int:
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
+# Enrollment-token lifetime. Default comes from HARNESS_ENROLL_TTL_MINUTES;
+# callers may also pass an explicit ttl_minutes (clamped to MIN..MAX).
+ENROLLMENT_TTL_MINUTES = _env_int("HARNESS_ENROLL_TTL_MINUTES", 30)
+ENROLLMENT_TTL_MIN_MINUTES = _env_int("HARNESS_ENROLL_TTL_MIN_MINUTES", 1)
+ENROLLMENT_TTL_MAX_MINUTES = _env_int("HARNESS_ENROLL_TTL_MAX_MINUTES", 1440)  # 24h cap
+
+
+def resolve_ttl_minutes(ttl_minutes=None) -> int:
+    """Effective TTL in minutes. None/empty -> configured default.
+    An explicit value must be an integer within [MIN, MAX] or ValueError is raised."""
+    if ttl_minutes is None or ttl_minutes == "":
+        return ENROLLMENT_TTL_MINUTES
+    try:
+        val = int(ttl_minutes)
+    except (TypeError, ValueError):
+        raise ValueError("ttl_minutes must be an integer")
+    if val < ENROLLMENT_TTL_MIN_MINUTES or val > ENROLLMENT_TTL_MAX_MINUTES:
+        raise ValueError(
+            f"ttl_minutes must be between {ENROLLMENT_TTL_MIN_MINUTES} and {ENROLLMENT_TTL_MAX_MINUTES}"
+        )
+    return val
 
 
 def _hash(token: str) -> str:
@@ -16,12 +45,14 @@ def generate_device_id() -> str:
     return "DEV-" + secrets.token_hex(3).upper()
 
 
-def create_enrollment_token(device_name: str = "") -> tuple[str, str]:
-    """Returns (device_id, plaintext_token). Only the hash is stored."""
+def create_enrollment_token(device_name: str = "", ttl_minutes=None) -> tuple[str, str]:
+    """Returns (device_id, plaintext_token). Only the hash is stored.
+    ttl_minutes overrides the configured default for this token only."""
+    ttl = resolve_ttl_minutes(ttl_minutes)
     device_id = generate_device_id()
     token = secrets.token_urlsafe(24)
     now = dt.datetime.utcnow()
-    expires = now + dt.timedelta(minutes=ENROLLMENT_TTL_MINUTES)
+    expires = now + dt.timedelta(minutes=ttl)
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO enrollment_tokens (token_hash, device_id, created_at, expires_at, used) "
@@ -76,13 +107,25 @@ def revoke_device(device_id: str):
         conn.execute("UPDATE devices SET revoked = 1, status = 'OFFLINE' WHERE device_id = ?", (device_id,))
 
 
-def reissue_enrollment_token(device_id: str) -> str:
+def delete_device(device_id: str) -> int:
+    """Permanently removes a device row and its enrollment tokens.
+    Returns the number of device rows deleted (0 if not found).
+    Command history is intentionally preserved."""
+    with get_conn() as conn:
+        conn.execute("DELETE FROM enrollment_tokens WHERE device_id = ?", (device_id,))
+        cur = conn.execute("DELETE FROM devices WHERE device_id = ?", (device_id,))
+        return cur.rowcount
+
+
+def reissue_enrollment_token(device_id: str, ttl_minutes=None) -> str:
     """New enrollment token for a device_id that already exists (re-run of setup,
     or the client's cached credential went stale). Does not touch devices table;
-    /api/register will overwrite the existing row's cred_hash on redemption."""
+    /api/register will overwrite the existing row's cred_hash on redemption.
+    ttl_minutes overrides the configured default for this token only."""
+    ttl = resolve_ttl_minutes(ttl_minutes)
     token = secrets.token_urlsafe(24)
     now = dt.datetime.utcnow()
-    expires = now + dt.timedelta(minutes=ENROLLMENT_TTL_MINUTES)
+    expires = now + dt.timedelta(minutes=ttl)
     with get_conn() as conn:
         conn.execute(
             "INSERT INTO enrollment_tokens (token_hash, device_id, created_at, expires_at, used) "
