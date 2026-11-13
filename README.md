@@ -1,10 +1,10 @@
 <div align="center">
 
-# 🛰️ Agent Harness
+# 🛰️ AgentLink
 
-### Give your AI agent hands on your own computers.
+### Connect your Windows and Linux PC to your AI agent with one PowerShell command
 
-**A self-hosted remote command console and API that lets AI agents (Claude, GPT, local LLMs, your own scripts) run shell commands on your Windows and Linux PCs — with one-line enrollment, per-device credentials, a live dashboard, and instant revoke.**
+**AgentLink is a self-hosted remote command console and API for AI agents. Give Claude, ChatGPT, or a local LLM hands on your own computers — run shell commands remotely, get structured results, and control your PCs from a live dashboard. No installer, no admin rights, no port forwarding, no VPN.**
 
 > ### 🪟 No installer. No admin rights. No port forwarding. Just **one PowerShell command** on your PC.
 
@@ -14,11 +14,11 @@
 [![Outbound only](https://img.shields.io/badge/PC%20side-outbound%20only-f59e0b)](#-how-it-works)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-[Quick start](#-quick-start) · [Connect a PC](#-connect-a-pc-in-one-line) · [Use it with an AI agent](#-use-it-with-an-ai-agent) · [API](#-api-reference) · [Security](#-security-model--read-this-first) · [FAQ](#-faq)
+[Quick start](#-quick-start) · [Connect a PC](#-connect-a-pc-in-one-line) · [Give it to your AI agent](#-give-this-to-your-ai-agent) · [Use it with an AI agent](#-use-it-with-an-ai-agent) · [API](#-api-reference) · [Security](#️-security-model--read-this-first) · [FAQ](#-faq)
 
 <br>
 
-<img src="docs/screenshots/dashboard.png" alt="Agent Hub dashboard showing connected devices, a live terminal console, live activity feed and command history" width="900">
+<img src="docs/screenshots/dashboard.png" alt="AgentLink dashboard showing connected Windows and Linux devices, a live terminal console, live activity feed and command history" width="900">
 
 </div>
 
@@ -36,20 +36,22 @@
 
 ---
 
-## ✨ What is Agent Harness?
+## ✨ What is AgentLink?
 
-Most AI agents live in a chat window. **Agent Harness gives them a real machine to work on.**
+Most AI agents live in a chat window. **AgentLink gives them a real machine to work on.**
 
 You run a small server (the **Hub**) on any VPS or home server. You paste **one command** on a PC. That PC connects *outward* to your Hub and shows up in a clean dashboard. From then on, you — or your AI agent — can send commands to it and get back structured results: `stdout`, `stderr`, exit code, and timing.
 
+AgentLink is a self-hosted AI agent remote execution tool for remote shell access, remote command execution, and LLM agent control of Windows and Linux PCs.
+
 It's built for people who want to:
 
-- 🤖 **Let an LLM agent operate their own PCs** (build, test, deploy, inspect, fix) through a simple HTTP tool call.
+- 🤖 **Let an LLM agent operate their own PCs** (build, test, deploy, inspect, fix) through a simple HTTP tool call — with Claude Code, ChatGPT, Cursor, Codex, or a local model.
 - 🖥️ **Control several machines from one place** without VPNs, port forwarding, or SSH key juggling.
 - 🧪 **Prototype agent infrastructure** with a small, readable codebase (Flask + SQLite + WebSocket) instead of a heavyweight platform.
 - 📜 **Keep a record** of every command an agent ever ran.
 
-> **Heads up:** this tool executes shell commands on enrolled machines — that's the whole point. Only enroll machines **you own or are authorized to administer**, and read the [security model](#-security-model--read-this-first) before exposing it to the internet.
+> **Heads up:** this tool executes shell commands on enrolled machines — that's the whole point. Only enroll machines **you own or are authorized to administer**, and read the [security model](#️-security-model--read-this-first) before exposing it to the internet.
 
 ---
 
@@ -78,7 +80,7 @@ flowchart LR
     A["🤖 AI agent / script / you"] -- "HTTPS + Basic Auth<br/>POST /api/devices/ID/command" --> H
     D["🖥️ Dashboard (browser)"] -- HTTPS --> H
     subgraph VPS ["Your VPS"]
-      C["Caddy<br/>TLS"] --> H["Agent Hub<br/>Flask + SQLite"]
+      C["Caddy<br/>TLS"] --> H["AgentLink Hub<br/>Flask + SQLite"]
     end
     P1["💻 Windows PC"] -. "outbound wss://" .-> C
     P2["🐧 Linux box"] -. "outbound wss://" .-> C
@@ -94,27 +96,28 @@ flowchart LR
 
 **Requirements:** Python 3.9+ on the Hub, a VPS or server with a public IP, and [Caddy](https://caddyserver.com/) (recommended for HTTPS).
 
-### 😎 The pro move: let your AI agent set it up
+### 😎 Give this to your AI agent
 
-Hand the project to your coding agent (Claude Code, Cursor, Codex, anything with a terminal) and paste this:
+This is the intended way to use AgentLink for personal use. Give this repo to your coding agent — Claude Code, Cursor, Codex, or anything with a terminal — and paste this:
 
 ```text
-This is the agent-harness project. Set it up for me on this server:
+This is the AgentLink project. Set it up for me on this server:
 1. Create a Python virtual environment (venv) inside the project and install requirements-server.txt into it. Never install system-wide.
 2. Generate a long random dashboard password, save it somewhere safe, and export HARNESS_DASHBOARD_USER=admin and HARNESS_DASHBOARD_PASS.
 3. Edit deploy/Caddyfile and replace YOUR_VPS_IP with this server's public IP.
 4. Start server/app.py from the venv and run Caddy so the dashboard is reachable over https.
 5. Tell me the dashboard URL, the username, and the password.
+6. Then give me the one-line PowerShell command to connect my PC.
 ```
 
-Your agent lives in the venv, your system stays clean, and you're connecting PCs in a couple of minutes. 🧑‍🍳
+Your agent sets up the Hub, gives you the enrollment command, you paste it in PowerShell — and your PC is connected. Your agent lives in the venv, your system stays clean, and you're connecting PCs in a couple of minutes. 🧑‍🍳
 
 ### 🔧 Manual setup
 
 ```bash
 # 1. Get the code
-git clone https://github.com/YOUR_USERNAME/agent-harness.git
-cd agent-harness
+git clone https://github.com/Hacker-Shohan/AgentLink.git
+cd AgentLink
 
 # 2. Create a virtual environment and install server dependencies
 python3 -m venv .venv
@@ -178,7 +181,7 @@ This binds to `0.0.0.0:8787` with **no TLS** — your password and device creden
 
 <br>
 
-<img src="docs/screenshots/connect-modal.png" alt="Connect a new PC dialog showing a one-line PowerShell enrollment command with copy button, device ID and 30 minute expiry" width="720">
+<img src="docs/screenshots/connect-modal.png" alt="Connect a new PC dialog in AgentLink showing a one-line PowerShell enrollment command with copy button, device ID and 30 minute expiry" width="720">
 
 </div>
 
@@ -223,7 +226,7 @@ Useful client flags: `--token` (register fresh, overrides any cache), `--reset` 
 
 ## 🤖 Use it with an AI agent
 
-Any agent that can make an HTTP request can use Agent Harness. Here's a minimal Python tool you can plug into function calling / tool use with Claude, GPT, or a local model:
+Any agent that can make an HTTP request can use AgentLink. Here's a minimal Python tool you can plug into function calling / tool use with Claude, GPT, or a local model:
 
 ```python
 import requests
@@ -287,7 +290,7 @@ All `/api/*` routes (except `/api/register`) require **HTTP Basic Auth** with yo
 ```bash
 curl -k -u admin:YOUR_PASSWORD \
   -H "Content-Type: application/json" \
-  -d '{"command": "echo hello from the harness", "timeout_s": 30}' \
+  -d '{"command": "echo hello from AgentLink", "timeout_s": 30}' \
   https://YOUR_VPS_IP/api/devices/DEV-A5E5D1/command
 ```
 
@@ -299,7 +302,7 @@ curl -k -u admin:YOUR_PASSWORD \
   "device_id": "DEV-A5E5D1",
   "status": "completed",
   "exit_code": 0,
-  "stdout": "hello from the harness\n",
+  "stdout": "hello from AgentLink\n",
   "stderr": ""
 }
 ```
@@ -310,7 +313,7 @@ Possible `status` values: `completed`, `timeout`, `error`. If the PC isn't conne
 
 ## 🛡️ Security model — read this first
 
-Agent Harness is **remote code execution by design**. Treat the Hub like the keys to every enrolled machine.
+AgentLink is **remote code execution by design**. Treat the Hub like the keys to every enrolled machine.
 
 **What's built in**
 
@@ -337,13 +340,13 @@ Found a vulnerability? Please open a private security advisory instead of a publ
 ## 🗂️ Project layout
 
 ```
-agent-harness/
+AgentLink/
 ├── server/                 # Flask app, WebSocket endpoint, auth, commands, devices
 ├── client/
 │   ├── harness_client.py   # Cross-platform client (the only thing PCs run)
 │   ├── windows/bootstrap.ps1
 │   └── linux/bootstrap.sh
-├── web/templates/          # Agent Hub dashboard (dark/light)
+├── web/templates/          # AgentLink dashboard (dark/light)
 ├── database/schema.sql     # SQLite schema: devices, enrollment_tokens, commands
 ├── deploy/Caddyfile        # HTTPS reverse proxy config
 ├── docs/screenshots/       # Images used in this README
@@ -357,7 +360,7 @@ agent-harness/
 <details>
 <summary><b>How is this different from SSH?</b></summary>
 
-SSH needs inbound access to every machine (open ports, port forwarding, or a VPN) and key management per host. With Agent Harness the PCs connect *out* to your Hub, so it works from behind home routers and corporate NAT, and you get a single dashboard, a uniform JSON API for agents, and a built-in audit log.
+SSH needs inbound access to every machine (open ports, port forwarding, or a VPN) and key management per host. With AgentLink the PCs connect *out* to your Hub, so it works from behind home routers and corporate NAT, and you get a single dashboard, a uniform JSON API for agents, and a built-in audit log.
 
 </details>
 
@@ -422,7 +425,7 @@ Make sure Python 3 is installed and on `PATH`, you're on Windows 10 1803+ or 11 
 - [ ] Scheduled tasks/cron execution on clients
 - [ ] Bidirectional port forwarding through the WebSocket tunnel
 
-Have an idea? [Open an issue](https://github.com/YOUR_USERNAME/agent-harness/issues) — contributions are welcome.
+Have an idea? [Open an issue](https://github.com/Hacker-Shohan/AgentLink/issues) — contributions are welcome.
 
 ---
 
@@ -442,8 +445,8 @@ MIT — see [LICENSE](LICENSE).
 
 <div align="center">
 
-**If Agent Harness is useful to you, a ⭐ helps other people find it.**
+**If AgentLink is useful to you, a ⭐ helps other people find it.**
 
-<sub>Self-hosted remote command console · AI agent remote execution · remote shell API for LLM agents · Windows & Linux · Flask · WebSocket · SQLite</sub>
+<sub>AgentLink · Self-hosted AI agent remote execution · Remote shell API for LLM agents · Connect your PC to Claude, GPT, and local LLMs · Windows &amp; Linux · Flask · WebSocket · SQLite</sub>
 
 </div>
