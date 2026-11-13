@@ -58,7 +58,7 @@ It's built for people who want to:
 | | |
 |---|---|
 | ⚡ **One PowerShell command, no installer** | Click **Connect new PC**, copy one command, paste it on the target. No installer, no admin rights, no config files. |
-| 🔐 **Single-use enrollment tokens** | Random, SHA-256 hashed at rest, expire in 30 minutes, and can only be redeemed once. |
+| 🔐 **Single-use enrollment tokens** | Random, SHA-256 hashed at rest, expire in a configurable time (default 30 minutes), and can only be redeemed once. |
 | 🪪 **Per-device credentials** | Each PC gets its own permanent credential (hashed at rest) after enrolling. |
 | 🛑 **Instant revoke** | One click disconnects a device and blocks it from reconnecting. |
 | 🔄 **Regen token** | Re-enroll an existing device without creating a duplicate entry. |
@@ -274,10 +274,11 @@ All `/api/*` routes (except `/api/register`) require **HTTP Basic Auth** with yo
 | Method | Endpoint | What it does |
 |---|---|---|
 | `GET` | `/api/devices` | List devices with live `connected` status |
-| `POST` | `/api/enroll` | Create a device + enrollment token; returns ready-to-paste Windows and Linux commands |
-| `POST` | `/api/devices/<id>/reissue-token` | New enrollment token for an existing device |
+| `POST` | `/api/enroll` | Create a device + enrollment token (accepts optional `ttl_minutes`); returns ready-to-paste Windows and Linux commands |
+| `POST` | `/api/devices/<id>/reissue-token` | New enrollment token for an existing device (accepts optional `ttl_minutes`) |
 | `POST` | `/api/devices/<id>/command` | Run a command and wait for the result |
 | `POST` | `/api/devices/<id>/revoke` | Revoke the device and disconnect it |
+| `DELETE` | `/api/devices/<id>` | Permanently remove an offline device and its enrollment tokens |
 | `GET` | `/api/history` | The 50 most recent commands with status and exit codes |
 | `POST` | `/api/register` | *(used by the client)* Redeem an enrollment token for a credential |
 
@@ -313,7 +314,7 @@ Agent Harness is **remote code execution by design**. Treat the Hub like the key
 
 **What's built in**
 
-- Enrollment tokens are random, hashed at rest, single-use, and expire after 30 minutes.
+- Enrollment tokens are random, hashed at rest, single-use, and expire after a configurable time (default 30 minutes, overridden via `HARNESS_ENROLL_TTL_MINUTES` or API payload).
 - Device credentials are random and hashed at rest; each device has its own, so revoking one doesn't affect the others.
 - The dashboard and every control API are behind Basic Auth (constant-time comparison).
 - PCs never accept inbound connections — they only dial out.
@@ -414,6 +415,12 @@ Make sure Python 3 is installed and on `PATH`, you're on Windows 10 1803+ or 11 
 - [ ] Official MCP server wrapper
 - [ ] File upload/download
 - [ ] macOS client
+- [ ] Interactive terminal (PTY) support for long-running processes and shell sessions
+- [ ] End-to-End Encryption (E2EE) between the dashboard/agent and the client PC
+- [ ] Webhooks for device events (online/offline, enrollment, command completion)
+- [ ] Grouping and tagging devices for bulk command execution
+- [ ] Scheduled tasks/cron execution on clients
+- [ ] Bidirectional port forwarding through the WebSocket tunnel
 
 Have an idea? [Open an issue](https://github.com/YOUR_USERNAME/agent-harness/issues) — contributions are welcome.
 
